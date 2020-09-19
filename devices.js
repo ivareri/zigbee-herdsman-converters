@@ -221,6 +221,15 @@ const configureReporting = {
         const payload = configureReportingPayload('fanMode', 0, repInterval.HOUR, 0, overrides);
         await endpoint.configureReporting('hvacFanCtrl', payload);
     },
+    reactivePower: async (endpoint) => {
+        const payload = [{
+            attribute: 'reactivePower',
+            minimumReportInterval: 1,
+            maximumReportInterval: repInterval.MINUTES_5,
+            reportableChange: 1,
+        }];
+        await endpoint.configureReporting('haElectricalMeasurement', payload);
+    },
 };
 
 const generic = {
@@ -12341,6 +12350,32 @@ const devices = [
     },
 
     // Develco
+    {
+        zigbeeModel: ['SPLZB-131'],
+        model: 'SPLZB-131',
+        vendor: 'Develco',
+        description: 'Zigbee smart plug with power meter',
+        supports: 'on/off, power measurement',
+        fromZigbee: [fz.on_off, fz.electrical_measurement],
+        toZigbee: [tz.on_off],
+        endpoint: (device) => {
+            return {'system': 1, 'default': 2};
+        },
+        meta: {configureKey: 1},
+        configure: async (device, coordinatorEndpoint) => {
+            const endpoint = device.getEndpoint(2);
+            await bind(endpoint, coordinatorEndpoint, ['genOnOff', 'haElectricalMeasurement']);
+            await endpoint.read('haElectricalMeasurement', [
+                'acVoltageMultiplier', 'acVoltageDivisor', 'acCurrentMultiplier',
+                'acCurrentDivisor', 'acPowerMultiplier', 'acPowerDivisor',
+            ]);
+            await configureReporting.onOff(endpoint);
+            await configureReporting.rmsVoltage(endpoint);
+            await configureReporting.rmsCurrent(endpoint);
+            await configureReporting.activePower(endpoint);
+            await configureReporting.reactivePower(endpoint);
+        },
+    },
     {
         zigbeeModel: ['EMIZB-132'],
         model: 'EMIZB-132',

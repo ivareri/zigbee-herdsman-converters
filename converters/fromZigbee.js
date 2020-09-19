@@ -725,6 +725,58 @@ const converters = {
             return payload;
         },
     },
+    electrical_measurement: {
+         /**
+          * When using this converter also add the following to the configure method of the device:
+          * await endpoint.read('haElectricalMeasurement', [
+          *   'acVoltageMultiplier', 'acVoltageDivisor', 'acCurrentMultiplier',
+          *   'acCurrentDivisor', 'acPowerMultiplier', 'acPowerDivisor',
+          * ]);
+          */
+        cluster: 'haElectricalMeasurement',
+        type: ['attributeReport', 'readResponse'],
+        convert: (model, msg, publish, options) => {
+            const payload = {};
+            if (msg.data.hasOwnProperty('activePower')) {
+                const multiplier = msg.endpoint.getClusterAttributeValue(
+                    'haElectricalMeasurement', 'acPowerMultiplier'
+                );
+                const divisor = msg.endpoint.getClusterAttributeValue(
+                    'haElectricalMeasurement', 'acPowerDivisor'
+                );
+                const factor = multiplier && divisor ? multiplier / divisor : 1;
+                payload.power = precisionRound(msg.data['activePower'] * factor, 2);
+            }
+            if (msg.data.hasOwnProperty('rmsCurrent')) {
+                const multiplier = msg.endpoint.getClusterAttributeValue(
+                    'haElectricalMeasurement', 'acCurrentMultiplier'
+                );
+                const divisor = msg.endpoint.getClusterAttributeValue('haElectricalMeasurement', 'acCurrentDivisor');
+                const factor = multiplier && divisor ? multiplier / divisor : 1;
+                payload.current = precisionRound(msg.data['rmsCurrent'] * factor, 2);
+            }
+            if (msg.data.hasOwnProperty('rmsVoltage')) {
+                const multiplier = msg.endpoint.getClusterAttributeValue(
+                    'haElectricalMeasurement', 'acVoltageMultiplier'
+                );
+                const divisor = msg.endpoint.getClusterAttributeValue('haElectricalMeasurement', 'acVoltageDivisor');
+                const factor = multiplier && divisor ? multiplier / divisor : 1;
+                payload.voltage = precisionRound(msg.data['rmsVoltage'] * factor, 2);
+            }
+            // Update: handling reactive power
+            if (msg.data.hasOwnProperty('reactivePower')) {
+                const multiplier = msg.endpoint.getClusterAttributeValue(
+                    'haElectricalMeasurement', 'acPowerMultiplier'
+                );
+                const divisor = msg.endpoint.getClusterAttributeValue(
+                    'haElectricalMeasurement', 'acPowerDivisor'
+                );
+                const factor = multiplier && divisor ? multiplier / divisor : 1;
+                payload.reactivepower = precisionRound(msg.data['reactivePower'] * factor, 2);
+            }
+            return payload;
+        },
+    },
     on_off: {
         cluster: 'genOnOff',
         type: ['attributeReport', 'readResponse'],
